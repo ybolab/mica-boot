@@ -2,7 +2,11 @@
 # Generate isolated development inputs; no existing directory is overwritten.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-repo=$(cd "$here/../.." && pwd)
+# The consuming repository: the directory above this one when this tree is
+# taken as the `boot/` source pin, or this checkout itself when it carries
+# its own build-env/ (the standalone gates of ybolab/mica-boot).
+repo=$here
+[ -f "$repo/build-env/from.sh" ] || repo=$(cd "$here/.." && pwd)
 [ "$#" -eq 2 ] && [ "$1" = --out ] || { echo 'usage: dev-keys.sh --out NEW_DIRECTORY' >&2; exit 2; }
 command -v docker >/dev/null
 command -v realpath >/dev/null
@@ -16,8 +20,8 @@ case "$output" in
 /root/*) host_output="/srv/station/root/${output#/root/}";;
 *) host_output=$output;;
 esac
-image=$(bash "$repo/build-env/from.sh" --arch=amd64 --ref LOCAL_MOS_BUILD_OPENSSL)
-# mos-build-side: container-block -- key generation uses the pinned OpenSSL image.
+image=$(bash "$repo/build-env/from.sh" --arch=amd64 --ref LOCAL_MICA_BUILD_OPENSSL)
+# mica-build-side: container-block -- key generation uses the pinned OpenSSL image.
 docker run --rm --label ai-agent=true --network traefik \
     --user "$(id -u):$(id -g)" -v "$host_output:/keys" --entrypoint /bin/bash "$image" -ceu '
     set -o pipefail
@@ -33,6 +37,6 @@ docker run --rm --label ai-agent=true --network traefik \
     printf "DEVELOPMENT-GRADE\nDOMAINS=boot verity updates\n" > /keys/GENERATED
     chmod 0644 /keys/boot/*.cert.pem /keys/verity/*.cert.pem /keys/updates/public.key /keys/GENERATED
 '
-# mos-build-side: host
+# mica-build-side: host
 install -m 0644 "$repo/meta.example/updates/manifest.json" "$output/updates/manifest.json"
 echo "Development boot, content and metadata signing inputs created at $output"

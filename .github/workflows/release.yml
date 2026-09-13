@@ -1,0 +1,26 @@
+name: release
+# Every push to main that passes the gates publishes this commit's tree as
+# the release build-<commit12>; consumers pin it with `tools/deps.sh bump
+# mica-boot`.
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the build substrate at its pin
+        run: make deps
+        env:
+          GH_TOKEN: ${{ secrets.MICA_DEPS_TOKEN }}
+      - name: The builder images this tooling runs in
+        run: make build-env
+      - name: Lint and the tooling's tests
+        run: make check
+      - name: Publish this commit as a source release
+        if: github.event_name == 'push'
+        run: make publish-source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

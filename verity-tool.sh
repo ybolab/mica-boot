@@ -2,12 +2,16 @@
 # Stage explicit public trust inputs or sign a root hash with pinned tooling.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "${HERE}/../.." && pwd)"
+# The consuming repository: the directory above this one when this tree is
+# taken as the `boot/` source pin, or this checkout itself when it carries
+# its own build-env/ (the standalone gates of ybolab/mica-boot).
+ROOT="${HERE}"
+[ -f "${ROOT}/build-env/from.sh" ] || ROOT="$(cd "${HERE}/.." && pwd)"
 die() { echo "verity-tool: $*" >&2; exit 1; }
 command -v docker >/dev/null || die 'docker is required'
 command -v realpath >/dev/null || die 'realpath is required'
 case "$(uname -m)" in x86_64) arch=amd64 ;; aarch64) arch=arm64 ;; *) die 'unsupported build architecture' ;; esac
-image="$(bash "${ROOT}/build-env/from.sh" --arch="${arch}" --ref LOCAL_MOS_BUILD_OPENSSL)"
+image="$(bash "${ROOT}/build-env/from.sh" --arch="${arch}" --ref LOCAL_MICA_BUILD_OPENSSL)"
 
 # Docker bind sources are host paths, including when this checkout is in station.
 host_path() {

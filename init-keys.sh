@@ -2,7 +2,11 @@
 # Initialize or validate development signing inputs without rotating identities.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-repo=$(cd "$here/../.." && pwd)
+# The consuming repository: the directory above this one when this tree is
+# taken as the `boot/` source pin, or this checkout itself when it carries
+# its own build-env/ (the standalone gates of ybolab/mica-boot).
+repo=$here
+[ -f "$repo/build-env/from.sh" ] || repo=$(cd "$here/.." && pwd)
 output="$repo/meta"
 if [ "$#" -ne 0 ]; then
     [ "$#" -eq 2 ] && [ "$1" = --out ] || {
@@ -17,7 +21,7 @@ while [ "$parent" != / ]; do
     [ ! -L "$parent" ] || { echo 'error: signing path contains a symlink' >&2; exit 1; }
     parent=$(dirname "$parent")
 done
-image=$(bash "$repo/build-env/from.sh" --arch=amd64 --ref LOCAL_MOS_BUILD_OPENSSL)
+image=$(bash "$repo/build-env/from.sh" --arch=amd64 --ref LOCAL_MICA_BUILD_OPENSSL)
 umask 077
 mkdir -p "$repo/.tmp"
 lock=$(printf '%s' "$output" | sha256sum | cut -d' ' -f1)
@@ -35,7 +39,7 @@ case "$output" in
 /root/*) host_output="/srv/station/root/${output#/root/}";;
 *) host_output=$output;;
 esac
-# mos-build-side: container-block -- validate keys with the pinned signing toolchain.
+# mica-build-side: container-block -- validate keys with the pinned signing toolchain.
 if ! docker run --rm --label ai-agent=true --name "ai-agent-mos-key-init-$$" --network traefik \
     --mount "type=bind,source=$host_output,target=/keys,readonly" \
     --entrypoint /bin/bash "$image" -ceu '
@@ -60,7 +64,7 @@ if ! docker run --rm --label ai-agent=true --name "ai-agent-mos-key-init-$$" --n
             openssl pkey -pubin -outform DER > /tmp/$domain.cert.pub
         cmp -s /tmp/$domain.pub /tmp/$domain.cert.pub
     done
-    openssl pkey -in /keys/updates/signer.key.pem -passin pass: -text_pub -noout | grep -q "^ED25519 Public-Key:"
+    openssl pkey -in /keys/updates/signer.key.pem -passin pass: -text_pub -noout | grep -c "^ED25519 Public-Key:" >/dev/null
     regular /keys/updates/public.key
     tail -c 32 /tmp/updates.pub | base64 -w0 > /tmp/metadata.base64
     cmp -s /tmp/metadata.base64 /keys/updates/public.key
@@ -71,5 +75,5 @@ if ! docker run --rm --label ai-agent=true --name "ai-agent-mos-key-init-$$" --n
     echo 'error: signing inputs are incomplete, invalid or mismatched; existing identities were not replaced' >&2
     exit 1
 fi
-# mos-build-side: host
+# mica-build-side: host
 echo "Development signing inputs verified at $output"
