@@ -36,6 +36,8 @@ jobs:
         run: make deps
       - name: The builder images this tooling runs in
         run: make build-env
+      - name: Prepare the check container network
+        run: docker network inspect traefik >/dev/null 2>&1 || docker network create --label ai-agent=true traefik
       - name: Lint and the tooling's tests
         run: make check
       - name: Publish this commit as its source artifact
