@@ -1,24 +1,27 @@
 #!/bin/bash
-# mica-build-side: container -- assemble static startup and retained shutdown.
+# mica-build-side: container -- assemble static startup and retained shutdown from one mica-runkit.
 set -euo pipefail
 DEST="$1"
 EFI_ARCH=${2:?EFI architecture required}
 mkdir -p "$DEST"/{sbin,dev,proc,sys,run,system,support,newroot,etc/mica}
 # Preserve the existing architecture/ELF validation. Any discovered interpreter
 # or library violates the one-file startup contract.
-python3 /tools/elf-closure.py / "$DEST" "$EFI_ARCH" /input/mica-init /init
+python3 /tools/elf-closure.py / "$DEST" "$EFI_ARCH" /input/mica-runkit /init
 find "$DEST" -type f -printf '%P\n' | LC_ALL=C sort > /output/startup.files
 test "$(cat /output/startup.files)" = init
 test -x "$DEST/init"
 install -m 0644 /output/startup.files "$DEST/startup.files"
 install -m 0644 /input/boot.json "$DEST/etc/mica/boot.json"
-# B3's retained static shutdown and manifest remain separate from startup.
-python3 /tools/elf-closure.py / "$DEST/exitrd" "$EFI_ARCH" /input/mica-shutdown /shutdown
+# mica-runkit selects its entry point by the name it is invoked as. The retained
+# shutdown is a hard link to /init: the cpio stores the bytes once, /init stays
+# the regular file PID 1 is executed from, and copy_exitrd still retains a
+# regular /shutdown.
+mkdir -p "$DEST/exitrd"
+ln "$DEST/init" "$DEST/exitrd/shutdown"
 find "$DEST/exitrd" -type f -printf '%P\n' | LC_ALL=C sort > "$DEST/exitrd.files"
 test "$(cat "$DEST/exitrd.files")" = shutdown
-test -x "$DEST/exitrd/shutdown"
-# Startup observation uses the same unchanged shutdown executable, without
-# storing its bytes twice. copy_exitrd still receives the regular /shutdown.
+test "$DEST/exitrd/shutdown" -ef "$DEST/init"
+# Startup observation reaches the same executable as mica-shutdown.
 ln -s /exitrd/shutdown "$DEST/sbin/mica-shutdown"
 find "$DEST" -type f -printf '%P\n' | LC_ALL=C sort > /output/initramfs.files
 printf '%s\n' etc/mica/boot.json exitrd.files exitrd/shutdown init startup.files > /output/expected.files

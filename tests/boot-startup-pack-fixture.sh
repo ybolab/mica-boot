@@ -5,9 +5,9 @@ set -euo pipefail
 mode=${1:?transition, unsigned-guard, signed, or corrupt-data required}
 case "$mode" in transition|unsigned-guard|untrusted|signed|corrupt-data) ;; *) exit 2 ;; esac
 tree=/w/tree
-mkdir -p "$tree"/{bin,sbin,data,dev,proc,sys,run}
+mkdir -p "$tree"/{bin,sbin,data,dev,proc,sys,run,runkit}
 cp /w/tools/busybox "$tree/bin/busybox"
-cp /w/inputs/mica-init "$tree/mica-init"
+cp /w/inputs/mica-runkit "$tree/runkit/init"
 cp /w/inputs/fixture "$tree/fixture"
 cp /src/tests/boot-startup-guest-init.sh "$tree/init"
 chmod 0755 "$tree/init"
@@ -69,6 +69,6 @@ printf '%s\n' 12345678-1234-4321-abcd-1234567890ab > "$tree/data/partuuid"
 ) > "/w/$mode.cpio"
 source /src/compression.sh
 compress_payload "/w/$mode.cpio" "/w/$mode.cpio.zst" 67108864
-sha256sum "$tree/bin/busybox" "$tree/sbin/veritysetup" "$tree/sbin/dmsetup" "$tree/mica-init" "$tree/fixture" "/w/$mode.cpio" "/w/$mode.cpio.zst"
+sha256sum "$tree/bin/busybox" "$tree/sbin/veritysetup" "$tree/sbin/dmsetup" "$tree/runkit/init" "$tree/fixture" "/w/$mode.cpio" "/w/$mode.cpio.zst"
 veritysetup --version
 zstd --version
