@@ -2,8 +2,8 @@ _out/
 .tmp/
 tmp/
 
-# The build substrate, fetched at its pin by tools/deps.sh from the releases
-# of ybolab/mica-build-env (deps/sources/mica-build-env.json).
+# The build substrate, fetched at its pin by tools/deps.sh from the package
+# ghcr.io/ybolab/mica-build-env (deps/sources/mica-build-env.json).
 /build-env/
 # The pinned Debian base the boot-tools image installs from (mica-debian).
 /debian/

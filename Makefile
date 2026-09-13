@@ -12,7 +12,7 @@ endif
 
 MICA_SIGNING_OUTPUT ?= meta
 
-.PHONY: help deps deps-check deps-bump build-env boot-tools keys-init devkeys trust-domain-test lint check publish-source
+.PHONY: help deps deps-check deps-bump build-env boot-tools keys-init devkeys trust-domain-test source-publish-test lint check publish-source
 
 help:
 	@echo "  deps                fetch build-env/ and debian/ at their pins (deps/sources/); deps-check reads without downloading"
@@ -22,7 +22,8 @@ help:
 	@echo "  trust-domain-test   the key generators refuse aliasing, symlinks and concurrent runs"
 	@echo "  lint                shell hygiene of the tree"
 	@echo "  check               lint and trust-domain-test"
-	@echo "  publish-source      this commit as the release build-<commit12> (tools/deps.sh publish-source)"
+	@echo "  source-publish-test tools/deps.sh publish-source, bump and fetch against a local registry container"
+	@echo "  publish-source      this commit as ghcr.io/ybolab/mica-boot:source.build-<commit12> (tools/deps.sh publish-source; CI only)"
 
 deps:
 	bash tools/deps.sh fetch
@@ -45,6 +46,9 @@ devkeys:
 
 trust-domain-test:
 	bash tests/trust-domain-hygiene-test.sh
+
+source-publish-test:
+	bash tests/source-publish-test.sh
 
 # tests/boot-startup-package-test.sh, tests/boot-startup-pack-fixture.sh
 # and tests/boot-compression-test.sh are CONTAINER-SIDE scripts (they read
